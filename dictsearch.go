@@ -62,15 +62,14 @@ func (app *Application) Search(text string, ch chan string, done_flag chan int) 
 		for {
 			select {
 			case s := <-ch:
-				log.Println(s)
+				// log.Println(s)
 				result += s + "\n\n"
 			case <-done_flag:
-				log.Println("Done!")
+				// log.Println("Done!")
 				buf, err := app.text_view.GetBuffer()
 				if err != nil {
 					log.Fatal(err)
 				}
-				// _, end := buf.GetBounds()
 				buf.SetText(result)
 				app.status_bar.Pop(id)
 				app.status_bar.Push(id, "Поиск завершен.")
@@ -84,8 +83,8 @@ func (app *Application) Search(text string, ch chan string, done_flag chan int) 
 	if len(searchstring) < 1 || len(app.active_dicts) == 0 {
 		return
 	}
-	log.Println(searchstring)
-	log.Println(app.active_dicts)
+	// log.Println(searchstring)
+	// log.Println(app.active_dicts)
 	for d, _ := range app.active_dicts {
 		data, err := ioutil.ReadFile(path.Join(dict_path, d))
 		if err != nil {
