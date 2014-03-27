@@ -8,7 +8,7 @@ import (
 	"path"
 	"runtime"
 	"strings"
-	"sync"
+	// "sync"
 )
 
 const (
@@ -19,8 +19,8 @@ type Application struct {
 	active_dicts map[string]bool
 	ch           chan string
 	done_flag    chan int
-	wg           sync.WaitGroup
-	result       string
+	// wg           sync.WaitGroup
+	result string
 
 	// Widgets
 	win           *gtk.Window
@@ -52,56 +52,37 @@ func (app *Application) GetDictList(path string) []string {
 }
 
 func (app *Application) Search(text string, ch chan string, done_flag chan int) {
-	id := app.status_bar.GetContextId("Search status")
-	app.status_bar.Pop(id)
-	app.status_bar.Push(id, "Поиск...")
-	//
-	// Reader from channel
-	go func(ch chan string, done_flag chan int) {
-		result := ""
-		for {
-			select {
-			case s := <-ch:
-				// log.Println(s)
-				result += s + "\n\n"
-			case <-done_flag:
-				// log.Println("Done!")
-				buf, err := app.text_view.GetBuffer()
-				if err != nil {
-					log.Fatal(err)
-				}
-				buf.SetText(result)
-				app.status_bar.Pop(id)
-				app.status_bar.Push(id, "Поиск завершен.")
-				return
-			}
+	go func() {
+		searchstring := strings.TrimSpace(text)
+		if len(searchstring) < 1 || len(app.active_dicts) == 0 {
+			return
 		}
-	}(app.ch, app.done_flag)
-	//
+		id := app.status_bar.GetContextId("Search status")
+		app.status_bar.Pop(id)
+		app.status_bar.Push(id, "Поиск...")
 
-	searchstring := strings.TrimSpace(text)
-	if len(searchstring) < 1 || len(app.active_dicts) == 0 {
-		return
-	}
-	// log.Println(searchstring)
-	// log.Println(app.active_dicts)
-	for d, _ := range app.active_dicts {
-		data, err := ioutil.ReadFile(path.Join(dict_path, d))
-		if err != nil {
-			log.Fatal(err)
-		}
-		app.wg.Add(1)
-		go func(data []byte, ch chan string, d string) {
-			defer app.wg.Done()
+		result := ""
+		for d, _ := range app.active_dicts {
+			data, err := ioutil.ReadFile(path.Join(dict_path, d))
+			if err != nil {
+				log.Fatal(err)
+			}
+
 			for _, entry := range strings.Split(string(data), "\n") {
 				if strings.HasPrefix(strings.ToLower(entry), strings.ToLower(searchstring)+" ") {
-					ch <- fmt.Sprintf("%s:\n%s", d, entry)
+					result += fmt.Sprintf("%s:\n%s\n\n", d, entry)
 				}
 			}
-		}(data, ch, d)
-	}
-	app.wg.Wait()
-	app.done_flag <- 1
+		}
+		buf, err := app.text_view.GetBuffer()
+		if err != nil {
+			log.Println(err)
+		}
+		buf.SetText(result)
+		app.status_bar.Pop(id)
+		app.status_bar.Push(id, "Поиск завершен.")
+	}()
+
 }
 
 func (app *Application) Run() {
